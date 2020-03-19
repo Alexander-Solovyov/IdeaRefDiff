@@ -1,0 +1,3 @@
+rootProject.name = 'IdeaRefDiff'
+include 'core'
+
