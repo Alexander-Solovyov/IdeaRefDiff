@@ -10,6 +10,7 @@ import com.intellij.psi.tree.TokenSet;
 import refdiffIdea.core.cst.CstRoot;
 import refdiffIdea.core.cst.TokenPosition;
 import refdiffIdea.core.cst.TokenizedSource;
+import refdiffIdea.core.io.FilePathFilter;
 import refdiffIdea.core.io.SourceFile;
 import refdiffIdea.core.io.SourceFileSet;
 import refdiffIdea.parsers.LanguagePlugin;
@@ -21,11 +22,13 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public abstract class PsiPlugin implements LanguagePlugin {
+public class PsiPlugin implements LanguagePlugin {
     protected final PsiFileFactory fileFactory;
+    protected final LanguageVisitor visitor;
     private Pattern pattern;
 
-    public PsiPlugin(Project project) {
+    public PsiPlugin(Project project, LanguageVisitor visitor) {
+        this.visitor = visitor;
         fileFactory = PsiFileFactory.getInstance(project);
         pattern = Pattern.compile(getPattern());
     }
@@ -33,7 +36,7 @@ public abstract class PsiPlugin implements LanguagePlugin {
     @Override
     public CstRoot parse(SourceFileSet sources) throws Exception {
         CstRoot root = new CstRoot();
-        preProcess(root);
+        visitor.preProcess(root);
 
         for (SourceFile sourceFile : sources.getSourceFiles()) {
             String path = sourceFile.getPath();
@@ -45,9 +48,18 @@ public abstract class PsiPlugin implements LanguagePlugin {
             tokenize(file.getNode(), tokens);
             TokenizedSource tokenizedSource = new TokenizedSource(path, tokens);
             root.addTokenizedFile(tokenizedSource);
-            file.acceptChildren(getVisitor(sourceFile));
+            visitor.setCurrentSourceFile(path);
+            file.acceptChildren(new PsiRecursiveElementVisitor() {
+                @Override
+                public void visitElement(PsiElement element) {
+                    if (visitor.process(element)) {
+                        super.visitElement(element);
+                        visitor.postProcess(element);
+                    }
+                }
+            });
         }
-        postProcess();
+        visitor.postProcess();
         return root;
     }
 
@@ -77,7 +89,8 @@ public abstract class PsiPlugin implements LanguagePlugin {
         return "\\S+";
     }
 
-    protected abstract PsiVisitor getVisitor(SourceFile sourceFile);
-    protected void preProcess(CstRoot root) {}
-    protected void postProcess() {}
+    @Override
+    public FilePathFilter getAllowedFilesFilter() {
+        return visitor.getAllowedFilesFilter();
+    }
 }

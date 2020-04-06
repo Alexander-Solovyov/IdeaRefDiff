@@ -1,68 +1,54 @@
 package refdiffIdea.parsers.java;
 
 import com.intellij.openapi.project.Project;
+import com.intellij.psi.*;
 
-import refdiffIdea.core.cst.CstNode;
-import refdiffIdea.core.cst.CstNodeRelationship;
-import refdiffIdea.core.cst.CstNodeRelationshipType;
-import refdiffIdea.core.cst.CstRoot;
+import org.jetbrains.annotations.NotNull;
+
+import refdiffIdea.core.cst.*;
 import refdiffIdea.core.io.FilePathFilter;
-import refdiffIdea.core.io.SourceFile;
-import refdiffIdea.parsers.psi.*;
+import refdiffIdea.parsers.LanguagePlugin;
+import refdiffIdea.parsers.psi.LanguageVisitor;
+import refdiffIdea.parsers.psi.PsiPlugin;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-public class JavaPlugin extends PsiPlugin {
-    CstRoot root;
-    private Map<String, CstNode> nodesByUniqueName;
-    private Map<CstNode, List<String>> postProcessReferences;
-    private Map<CstNode, List<String>> postProcessSupertypes;
+public class JavaPlugin implements LanguageVisitor {
+    private JavaCstModel model = null;
+    private JavaPsiVisitor visitor = null;
 
-    public JavaPlugin(Project project) {
-        super(project);
+    public static LanguagePlugin create(@NotNull Project project) {
+        return new PsiPlugin(project, new JavaPlugin());
     }
 
     @Override
-    protected PsiVisitor getVisitor(SourceFile sourceFile) {
-        return new JavaVisitor(root, sourceFile.getPath(),
-                nodesByUniqueName, postProcessReferences, postProcessSupertypes);
+    public void preProcess(CstRoot root) {
+        model = new JavaCstModel(root);
     }
 
     @Override
-    protected void preProcess(CstRoot root) {
-        JavaVisitor.refreshCounter();
-        this.root = root;
-        nodesByUniqueName = new HashMap<>();
-        postProcessReferences = new HashMap<>();
-        postProcessSupertypes = new HashMap<>();
-    }
-
-    @Override
-    protected void postProcess() {
-        // methods
-        postProcess(postProcessReferences, CstNodeRelationshipType.USE);
-        // superclasses
-        postProcess(postProcessSupertypes, CstNodeRelationshipType.SUBTYPE);
-    }
-
-    private void postProcess(Map<CstNode, List<String>> relations, CstNodeRelationshipType type) {
-        for (Map.Entry<CstNode, List<String>> entry : relations.entrySet()) {
-            CstNode node = entry.getKey();
-            for (String name : entry.getValue()) {
-                CstNode relation = nodesByUniqueName.get(name);
-                if (relation != null) {
-                    root.getRelationships().add(new CstNodeRelationship(type,node.getId(),relation.getId()));
-                }
-            }
-        }
-
+    public void postProcess() {
+        model.postProcess();
     }
 
     @Override
     public FilePathFilter getAllowedFilesFilter() {
         return new FilePathFilter(Collections.singletonList(".java"));
+    }
+
+    @Override
+    public void setCurrentSourceFile(@NotNull String sourceFilePath) {
+        visitor = new JavaPsiVisitor(model, sourceFilePath);
+    }
+
+    @Override
+    public boolean process(PsiElement element) {
+        element.accept(visitor);
+        return !(element instanceof PsiAnonymousClass);
+    }
+
+    @Override
+    public void postProcess(PsiElement element) {
+        visitor.exit(element);
     }
 }

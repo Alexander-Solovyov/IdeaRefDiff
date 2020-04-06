@@ -1,64 +1,47 @@
 package refdiffIdea.parsers.java;
 
 import com.intellij.psi.*;
-
 import org.jetbrains.annotations.NotNull;
-
 import refdiffIdea.core.cst.*;
-import refdiffIdea.parsers.psi.PsiVisitor;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedList;
+import java.util.List;
 
-public class JavaVisitor extends PsiVisitor {
+public class JavaPsiVisitor extends JavaElementVisitor {
+    private final JavaCstModel model;
     private String namespaceName = "";
-    private String sourceFilePath;
-    private static int nodeNum = 0;
-    private Map<String, CstNode> nodesByUniqueName = new HashMap<>();
-    private Map<CstNode, List<String>> postProcessReferences;
-    private Map<CstNode, List<String>> postProcessSupertypes;
-
+    private final String sourceFilePath;
     private final LinkedList<HasChildrenNodes> containerStack = new LinkedList<>();
 
-    JavaVisitor(@NotNull CstRoot root, @NotNull String sourceFilePath,
-                @NotNull Map<String, CstNode> nodesByUniqueName,
-                @NotNull Map<CstNode, List<String>> postProcessReferences,
-                @NotNull Map<CstNode, List<String>> postProcessSupertypes) {
-        containerStack.push(root);
+    JavaPsiVisitor(@NotNull JavaCstModel model, @NotNull String sourceFilePath) {
+        this.model = model;
         this.sourceFilePath = sourceFilePath;
-        this.nodesByUniqueName = nodesByUniqueName;
-        this.postProcessReferences = postProcessReferences;
-        this.postProcessSupertypes = postProcessSupertypes;
+        containerStack.push(model.getRoot());
     }
 
-    static public void refreshCounter() { nodeNum = 0; }
-
-    @Override
-    protected boolean process(PsiElement element) {
-        if (element instanceof PsiPackage) {
-            namespaceName = ((PsiPackage) element).getQualifiedName() + ".";
-        } else if (element instanceof PsiAnonymousClass) {
-            return false;
-        } else if (element instanceof PsiClass) {
-            process((PsiClass) element);
-        } else if (element instanceof PsiMethod) {
-            process((PsiMethod) element);
-        }
-        return true;
-    }
-
-    @Override
-    protected void postProcess(PsiElement element) {
+    public void exit(PsiElement element) {
         if (element instanceof PsiClass) {
-           containerStack.pop();
+            containerStack.pop();
         }
     }
 
-    private void process(PsiClass element) {
+    @Override
+    public void visitPackage(PsiPackage element) {
+        namespaceName = element.getQualifiedName() + ".";
+    }
+
+    @Override
+    public void visitAnonymousClass(PsiAnonymousClass element) {}
+
+    @Override
+    public void visitClass(PsiClass element) {
         int startPos = element.getTextRange().getStartOffset();
         int endPos = element.getTextRange().getEndOffset();
         String name = element.getName();
 
-        CstNode node = new CstNode(++nodeNum);
+        CstNode node = model.createNode();
         node.setType(element.isEnum() ? "EnumDeclaration" :
                 element.isInterface() ? "InterfaceDeclaration" : "ClassDeclaration");
         node.setLocation(Location.of(sourceFilePath, startPos, endPos, startPos, endPos, element.getContainingFile().getText()));
@@ -71,21 +54,22 @@ public class JavaVisitor extends PsiVisitor {
 
         String uniqueName = element.getQualifiedName();
         if (uniqueName != null && !uniqueName.isEmpty()) {
-            nodesByUniqueName.put(uniqueName, node);
+            model.linkNodeToName(uniqueName, node);
         }
 
         if (element.isDeprecated()) {
             node.addStereotypes(Stereotype.DEPRECATED);
         }
 
-        addSupertypesForPostprocessing(node,element.getSupers());
+        addSupertypesForPostprocessing(node, element.getSupers());
 
         containerStack.peek().addNode(node);
         containerStack.push(node);
     }
 
-    private void process(@NotNull PsiMethod element) {
-        CstNode node = new CstNode(++nodeNum);
+    @Override
+    public void visitMethod(PsiMethod element) {
+        CstNode node = model.createNode();
         node.setType(element.getClass().getSimpleName());
         node.addStereotypes(element.isConstructor() ? Stereotype.TYPE_CONSTRUCTOR : Stereotype.TYPE_MEMBER);
         if (element.isDeprecated()) {
@@ -110,7 +94,7 @@ public class JavaVisitor extends PsiVisitor {
 
         if (element.getContainingClass() != null && element.getContainingClass().getQualifiedName() != null) {
             String uniqueName = element.getContainingClass().getQualifiedName() + "." + signature;
-            nodesByUniqueName.put(uniqueName, node);
+            model.linkNodeToName(uniqueName, node);
         }
 
         Arrays.stream(element.getParameterList().getParameters()).forEachOrdered(
@@ -140,7 +124,7 @@ public class JavaVisitor extends PsiVisitor {
                     super.visitElement(element);
                 }
             });
-            postProcessReferences.put(node, references);
+            model.addReferences(node, references);
         }
 
         containerStack.peek().addNode(node);
@@ -166,7 +150,7 @@ public class JavaVisitor extends PsiVisitor {
         if (supers.length == 0)
             return;
 
-        List<String> supertypes = postProcessSupertypes.computeIfAbsent(node, k -> new ArrayList<>());
+        List<String> supertypes = new ArrayList<>();
         for (PsiClass baseClass : supers) {
             PsiClass supertype = baseClass;
             while (supertype != null) {
@@ -183,5 +167,24 @@ public class JavaVisitor extends PsiVisitor {
                 }
             }
         }
+        model.addSupertypes(node, supertypes);
+    }
+
+    protected boolean isSetter(@NotNull PsiMethod element) {
+        String name = element.getName();
+        if (!name.startsWith("set") && element.getParameterList().getParameters().length != 1) {
+            return false;
+        }
+        PsiCodeBlock block = element.getBody();
+        return block == null || block.getStatementCount() < 2;
+    }
+
+    protected boolean isGetter(@NotNull PsiMethod element) {
+        String name = element.getName();
+        if (!name.startsWith("get") && !name.startsWith("is") && !element.getParameterList().isEmpty()) {
+            return false;
+        }
+        PsiCodeBlock block = element.getBody();
+        return block == null || block.getStatementCount() < 2;
     }
 }
