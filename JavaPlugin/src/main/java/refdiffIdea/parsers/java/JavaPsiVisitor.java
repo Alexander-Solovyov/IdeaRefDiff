@@ -28,8 +28,8 @@ public class JavaPsiVisitor extends JavaElementVisitor {
     }
 
     @Override
-    public void visitPackage(PsiPackage element) {
-        namespaceName = element.getQualifiedName() + ".";
+    public void visitPackageStatement(PsiPackageStatement element) {
+        namespaceName = element.getPackageName() + ".";
     }
 
     @Override
