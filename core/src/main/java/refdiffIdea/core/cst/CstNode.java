@@ -9,6 +9,7 @@ import java.util.Set;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.intellij.psi.PsiFile;
 
 /**
  * A node in the Code Structure Tree (CST).
@@ -17,6 +18,7 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include;
  */
 public class CstNode implements HasChildrenNodes {
 	private final int id;
+	private PsiFile file;
 	private String type;
 	private Location location;
 	private String simpleName;
@@ -200,5 +202,12 @@ public class CstNode implements HasChildrenNodes {
 	public void setParameters(List<Parameter> parameters) {
 		this.parameters = parameters;
 	}
-	
+
+	public PsiFile getFile() {
+		return file;
+	}
+
+	public void setFile(PsiFile file) {
+		this.file = file;
+	}
 }

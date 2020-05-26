@@ -46,6 +46,13 @@ public class RefDiff {
 		return comparator.compare(beforeAndAfter);
 	}
 
+	public CstDiff computeDiffForCommit(final Project project, GitCommit commit) {
+		GitRepository repo = GitHelper.openRepository(project);
+		PairBeforeAfter<SourceFileSet> beforeAndAfter = GitHelper.getSourcesBeforeAndAfterCommit(repo, commit, fileFilter);
+		return comparator.compare(beforeAndAfter);
+	}
+
+
 	/**
 	 * Compute CST diff for commit
 	 *

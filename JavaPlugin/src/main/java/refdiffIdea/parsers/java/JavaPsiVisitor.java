@@ -42,6 +42,7 @@ public class JavaPsiVisitor extends JavaElementVisitor {
         String name = element.getName();
 
         CstNode node = model.createNode();
+        node.setFile(element.getContainingFile());
         node.setType(element.isEnum() ? "EnumDeclaration" :
                 element.isInterface() ? "InterfaceDeclaration" : "ClassDeclaration");
         node.setLocation(Location.of(sourceFilePath, startPos, endPos, startPos, endPos, element.getContainingFile().getText()));
@@ -70,6 +71,7 @@ public class JavaPsiVisitor extends JavaElementVisitor {
     @Override
     public void visitMethod(PsiMethod element) {
         CstNode node = model.createNode();
+        node.setFile(element.getContainingFile());
         node.setType(element.getClass().getSimpleName());
         node.addStereotypes(element.isConstructor() ? Stereotype.TYPE_CONSTRUCTOR : Stereotype.TYPE_MEMBER);
         if (element.isDeprecated()) {

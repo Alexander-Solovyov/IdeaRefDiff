@@ -1,4 +1,5 @@
 rootProject.name = 'IdeaRefDiff'
 include 'core'
 include 'JavaPlugin'
+include 'RefDiffUi'
 
