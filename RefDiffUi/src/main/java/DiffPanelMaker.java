@@ -23,15 +23,18 @@ public class DiffPanelMaker implements Disposable {
 
     Consumer<String> changeTitleCallback = null;
     final List<Relationship> relationships;
-    final CstDiff cstDiff;
+    final List<CstDiff> cstDiffs;
     int index = 0;
     Map<Relationship, RefactoringView> viewForRelationship = new HashMap<>();
 
-    public DiffPanelMaker(@NotNull final Project project, @NotNull CstDiff diff) {
+    public DiffPanelMaker(@NotNull final Project project, @NotNull final List<CstDiff> diffs) {
         myProject = project;
-        cstDiff = diff;
+        cstDiffs = diffs;
         content = new Wrapper();
-        relationships = new ArrayList<>(diff.getRefactoringRelationships());
+        relationships = new ArrayList<>();
+        for (CstDiff diff : diffs) {
+            relationships.addAll(diff.getRefactoringRelationships());
+        }
 
         JPanel mainPanel = new JPanel(new BorderLayout());
         updateFiles();
@@ -60,8 +63,13 @@ public class DiffPanelMaker implements Disposable {
 
     private void updateFiles() {
         Relationship r = relationships.get(index);
+        ListIterator<CstDiff> cstDiffIt = cstDiffs.listIterator();
+        for (int count = 0; count < index + 1; ) {
+            count += cstDiffIt.next().getRefactoringRelationships().size();
+        }
+
         RefactoringView view = viewForRelationship.computeIfAbsent(r,
-                relationship -> new RefactoringView(myProject,relationship, cstDiff));
+                relationship -> new RefactoringView(myProject,relationship, cstDiffIt.previous()));
         content.removeAll();
         content.add(view.getSplitter());
         content.repaint();
