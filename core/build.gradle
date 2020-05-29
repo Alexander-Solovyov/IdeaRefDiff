@@ -12,6 +12,9 @@ repositories {
     mavenCentral()
 }
 
+apply plugin: 'java'
+apply plugin: 'org.jetbrains.intellij'
+
 intellij {
     version '2020.1'
     plugins 'git4idea', 'java'

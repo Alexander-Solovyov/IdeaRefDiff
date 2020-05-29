@@ -1,0 +1,24 @@
+<idea-plugin>
+    <id>io.solovyov.alexander.RefDiffKotlinExtension</id>
+    <name>Kotlin extension for RefDiff</name>
+    <vendor email="support@yourcompany.com" url="http://www.yourcompany.com">YourCompany</vendor>
+
+    <description><![CDATA[
+    Enter short description for your plugin here.<br>
+    <em>most HTML tags may be used</em>
+    ]]></description>
+
+    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
+         on how to target different products -->
+    <depends>com.intellij.modules.platform</depends>
+    <depends>io.solovyov.alexander.RefDiffUi</depends>
+    <depends>org.jetbrains.kotlin</depends>
+
+    <extensions defaultExtensionNs="io.solovyov.alexander.RefDiffUi">
+        <languagePluginCreator implementation="KotlinPluginCreator"/>
+    </extensions>
+
+    <actions>
+        <!-- Add your actions here -->
+    </actions>
+</idea-plugin>

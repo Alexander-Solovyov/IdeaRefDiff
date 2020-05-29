@@ -12,6 +12,9 @@ repositories {
     mavenCentral()
 }
 
+apply plugin: 'java'
+apply plugin: 'org.jetbrains.intellij'
+
 dependencies {
     compile project(':RefDiffUi')
     compile project(':JavaPlugin')
@@ -20,6 +23,7 @@ dependencies {
 
 intellij {
     version '2020.1'
+    plugins 'java'
     pluginName 'IdeaRefDiffJava'
     downloadSources true
     updateSinceUntilBuild false

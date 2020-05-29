@@ -3,4 +3,6 @@ include 'core'
 include 'JavaPlugin'
 include 'RefDiffUi'
 include 'RefDiffJavaExtension'
+include 'KotlinPlugin'
+include 'RefDiffKotlinExtension'
 
